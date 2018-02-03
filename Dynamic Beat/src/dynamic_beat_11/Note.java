@@ -8,7 +8,7 @@ import javax.swing.ImageIcon;
 import dynamic_beat_11.Main;
 
 public class Note extends Thread {
-	private Image noteBasicImage = new ImageIcon(Main.class.getResource("../images/noteBasic.png")).getImage();
+	private Image noteBasicImage = new ImageIcon(Main.class.getResource("/images/noteBasic.png")).getImage();
 	private int x, y = 580 - (1000 / dynamic_beat_11.Main.SLEEP_TIME * dynamic_beat_11.Main.NOTE_SPEED) * dynamic_beat_11.Main.REACH_TIME;
 	private String noteType;
 	private boolean proceeded = true;
