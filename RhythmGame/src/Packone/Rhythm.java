@@ -36,10 +36,8 @@ public class Rhythm extends JFrame {
 	private ImageIcon easyButtonEnteredImage = new ImageIcon(Main.class.getResource("/images/easyButtonEntered.png"));
 	private ImageIcon hardButtonBasicImage = new ImageIcon(Main.class.getResource("/images/hardButtonBasic.png"));
 	private ImageIcon hardButtonEnteredImage = new ImageIcon(Main.class.getResource("/images/hardButtonEntered.png"));
-	// private ImageIcon backButtonBasicImage = new
-	// ImageIcon(Main.class.getResource("/images/backButtonBasic.png"));
-	// private ImageIcon backButtonEnteredImage = new
-	// ImageIcon(Main.class.getResource("/images/backButtonEntered.png"));
+	private ImageIcon backButtonBasicImage = new ImageIcon(Main.class.getResource("/images/backButtonBasic.png"));
+	private ImageIcon backButtonEnteredImage = new ImageIcon(Main.class.getResource("/images/backButtonEntered.png"));
 
 	private JButton exitButton = new JButton(exitButtonBasicImage);
 	private JButton startButton = new JButton(startButtonBasicImage);
@@ -48,7 +46,7 @@ public class Rhythm extends JFrame {
 	private JButton leftButton = new JButton(leftButtonBasicImage);
 	private JButton easyButton = new JButton(easyButtonBasicImage);
 	private JButton hardButton = new JButton(hardButtonBasicImage);
-	// private JButton backButton = new JButton(backButtonBasicImage);
+	private JButton backButton = new JButton(backButtonBasicImage);
 
 	private int mouseX = 0, mouseY = 0;
 
@@ -60,11 +58,8 @@ public class Rhythm extends JFrame {
 	private int nowSelected = 0; // 현재 선택된 트랙 번호
 	ArrayList<Track> trackList = new ArrayList<Track>();
 
-	private MyPanel panel;
 	private Video video;
-	private Game game;
-
-	private Image img;
+	public static Game game;
 
 	public Rhythm() {
 		trackList.add(new Track("Jolly Old St Nicholas Title Image.png", "Jolly_Old_St_Nicholas_Instrumental start.jpg",
@@ -111,7 +106,7 @@ public class Rhythm extends JFrame {
 				// Music("buttonPressedMusic.mp3", false);
 				// buttonEnteredMusic.start();
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(500);
 				} catch (InterruptedException ex) {
 					ex.printStackTrace();
 				}
@@ -119,6 +114,34 @@ public class Rhythm extends JFrame {
 			}
 		});
 		add(exitButton);
+
+		backButton.setVisible(false);
+		backButton.setBounds(20, 50, 60, 60); // 위치 x, 위치 y, 가로, 세로
+		backButton.setBorderPainted(false);
+		backButton.setContentAreaFilled(false);
+		backButton.setFocusPainted(false);
+		backButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				backButton.setIcon(backButtonEnteredImage);
+				backButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+				// Music buttonEnteredMusic = new
+				// Music("buttonEnteredMusic.mp3", false);
+				// buttonEnteredMusic.start();
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+				backButton.setIcon(backButtonBasicImage);
+				backButton.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+				backMain();
+			}
+		});
+		add(backButton);
 
 		startButton.setBounds(40, 200, 300, 90);
 		startButton.setBorderPainted(false);
@@ -331,21 +354,17 @@ public class Rhythm extends JFrame {
 
 	public void screenDraw(Graphics2D g) {
 		System.out.println("screen Draw");
-		g.drawImage(background, 0, 0, null);
+		if (isGameScreen) {
+			game.screenDraw(g);
+		} else
+			g.drawImage(background, 0, 0, null);
 
 		if (isMainScreen) {
 			g.drawImage(selectedImage, 340, 100, null);
 			g.drawImage(titleImage, 340, 70, null);
 		}
 
-		if (isGameScreen) {
-			g.drawImage(img, 0, 0, null);
-			game.screenDraw(g);
-			// panel = new MyPanel();
-			// this.setContentPane(panel);
-			// 다음 프레임으로 넘기기. video받는 프레임(MyFrame)
-		}
-		paintComponents(g); // 고정된거 그릴때
+		paintComponents(g); // 고정된거 그릴때. add한 JButton그림
 		try {
 			Thread.sleep(5);
 		} catch (Exception e) {
@@ -405,9 +424,9 @@ public class Rhythm extends JFrame {
 		easyButton.setVisible(false);
 		hardButton.setVisible(false);
 
-		// video.start();
+//		video.start();
 		// background = video.retImg();
-		// backButton.setVisible(true);
+		backButton.setVisible(true);
 		isGameScreen = true; // 게임화면그리기
 
 		game = new Game(trackList.get(nowSelected).getTitleName(), difficulty,
@@ -424,15 +443,20 @@ public class Rhythm extends JFrame {
 	public void startVideo() {
 		addKeyListener(new KeyListener());
 		// while(true){
-		// img = video.readCam();
-		// render(img);
 		System.out.println("start video");
-		// this.repaint();
 		// }
 	}
 
-	public void render(Image image) {
-		panel.setImage(image);
-		panel.repaint();
+	public void backMain() {
+		isMainScreen = true;
+		leftButton.setVisible(true);
+		rightButton.setVisible(true);
+		easyButton.setVisible(true);
+		hardButton.setVisible(true);
+		background = new ImageIcon(Main.class.getResource("/images/IntroBackground_main.jpg")).getImage();
+		backButton.setVisible(false);
+		selectTrack(nowSelected);
+		isGameScreen = false;
+		game.close();
 	}
 }

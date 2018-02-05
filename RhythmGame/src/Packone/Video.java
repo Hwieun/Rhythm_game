@@ -17,17 +17,16 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
-public class Video extends Thread{
+public class Video extends Thread {
 	static Mat image = null;
 	private VideoCapture camera;
 	private Mat origin;
 	private Size sz;
-	
-	
+
 	public Video() {
 		origin = new Mat();
 		sz = new Size(1280, 720);
-	camera = new VideoCapture(0);
+		camera = new VideoCapture(0);
 		if (!camera.isOpened()) {
 			System.out.println("Camera not connected!");
 		}
@@ -46,16 +45,21 @@ public class Video extends Thread{
 		}
 		return result;
 	}
-	
-	public Image readCam(){
+
+	public Image readCam() {
 		if (camera.read(origin)) { // 읽어서 Mat타입으로 저장
 			Core.flip(origin, origin, 1); // y축 기준으로 뒤집기
-		Imgproc.resize(origin, origin, sz);
-		image = origin.clone();
+			Imgproc.resize(origin, origin, sz);
+			image = origin.clone();
 
-		ImageIcon cImg = new ImageIcon(Mat2BufferedImage(image));	
-		return cImg.getImage();
-	}
+			ImageIcon cImg = new ImageIcon(Mat2BufferedImage(image));
+			return cImg.getImage();
+		}
 		return null;
+	}
+	
+	public void close(){
+		camera.release();
+		this.interrupt();
 	}
 }
