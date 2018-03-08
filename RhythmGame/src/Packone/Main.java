@@ -1,6 +1,6 @@
 package Packone;
 
-import java.awt.Image;
+	import java.awt.Image;
 
 import org.opencv.core.Core;
 
@@ -17,3 +17,5 @@ public class Main {
 		rhythm = new Rhythm();
 	}
 }
+////////////클래스 수 줄이기////////
+///////////RW보다 IO가 더 빠름(byte)

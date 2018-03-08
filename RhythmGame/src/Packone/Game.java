@@ -51,8 +51,8 @@ public class Game extends Thread {
 	}
 
 	public void screenDraw(Graphics2D g) {
-//		video.start();
-		System.out.println("game screen draw");
+		// video.start();
+//		System.out.println("game screen draw");
 		img = video.readCam();
 		g.drawImage(img, 0, 0, null);
 		g.drawImage(noteRouteSImage, 228, 30, null);

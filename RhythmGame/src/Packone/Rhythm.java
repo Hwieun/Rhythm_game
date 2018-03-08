@@ -58,7 +58,6 @@ public class Rhythm extends JFrame {
 	private int nowSelected = 0; // 현재 선택된 트랙 번호
 	ArrayList<Track> trackList = new ArrayList<Track>();
 
-	private Video video;
 	public static Game game;
 
 	public Rhythm() {
@@ -72,7 +71,7 @@ public class Rhythm extends JFrame {
 
 		setUndecorated(true); // 기본적인 메뉴바 없앰
 		setTitle("Dynamic Beat");
-		setSize(Main.SCREEN_WIDTH, Main.SCREEN_HEIGHT);
+		setSize(1280, 720);
 		setResizable(false);
 		setLocationRelativeTo(null);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // x버튼 클릭시 종료
@@ -110,6 +109,7 @@ public class Rhythm extends JFrame {
 				} catch (InterruptedException ex) {
 					ex.printStackTrace();
 				}
+				
 				System.exit(0);
 			}
 		});
@@ -344,7 +344,7 @@ public class Rhythm extends JFrame {
 	}
 
 	public void paint(Graphics g) {
-		System.out.println("paint");
+//		System.out.println("paint");
 
 		screenImage = createImage(Main.SCREEN_WIDTH, Main.SCREEN_HEIGHT);
 		screenGraphics = screenImage.getGraphics();
@@ -353,7 +353,7 @@ public class Rhythm extends JFrame {
 	}
 
 	public void screenDraw(Graphics2D g) {
-		System.out.println("screen Draw");
+//		System.out.println("screen Draw");
 		if (isGameScreen) {
 			game.screenDraw(g);
 		} else
