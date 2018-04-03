@@ -78,11 +78,11 @@ public class Video extends Thread {
 		Rect ROI = new Rect(0, 0, 250, 300);
 
 		int threshold1 = 85;
-		Scalar skincolorLower = new Scalar(0, 0.1137 * 255, 0.1379 * 255);
-		Scalar skincolorUpper = new Scalar(50, 0.6588 * 255, 255);
+		Scalar skincolorLower = new Scalar(0, 0.23 * 255, 0.13 * 255);
+		Scalar skincolorUpper = new Scalar(50, 0.68 * 255, 255);
 		Imgproc.resize(origin, origin, sz);
 		Core.flip(origin, origin, 1); // y축 기준으로 뒤집기
-		Imgproc.cvtColor(origin, hand, Imgproc.COLOR_BGR2HLS);
+		Imgproc.cvtColor(origin, hand, Imgproc.COLOR_BGR2HSV);
 		Core.inRange(hand, skincolorLower, skincolorUpper, hand);
 		// hand.copyTo(imgROI);
 		Mat verticalStructure = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(1, hand.rows() / 50));
@@ -108,23 +108,23 @@ public class Video extends Thread {
 		}
 		int j = 0;
 		double x = 0;
-		double y = 0;
+		double y = 0;int bf=0;
 		if (index > 0) {
 			index--;
 			for (int i = 0; i < contours.size(); i++) {
-				Point[] points = new Point[hull.get(index).rows()];
+				Point[] points = new Point[hull.get(i).rows()];
 
 				// Loop over all points that need to be hulled in current
 				// contour
-				for (j = 0; j < hull.get(index).rows(); j++) {
-					int in = (int) hull.get(index).get(j, 0)[0];
-					points[j] = new Point(contours.get(index).get(in, 0)[0], contours.get(index).get(in, 0)[1]);
-					x = x + contours.get(index).get(in, 0)[0];
-					y = y + contours.get(index).get(in, 0)[1];
+				for (j = 0; j < hull.get(i).rows(); j++) {
+					int in = (int) hull.get(i).get(j, 0)[0];
+					points[j] = new Point(contours.get(i).get(in, 0)[0], contours.get(i).get(in, 0)[1]);
+					x = x + contours.get(i).get(in, 0)[0];
+					y = y + contours.get(i).get(in, 0)[1];
 				}
 				hullPoints.add(points);
 			}
-			j = j - 1;
+			bf=contours.size()*(--j);
 
 			// Convert Point arrays into MatOfPoint
 			for (int i = 0; i < hullPoints.size(); i++) {
@@ -133,24 +133,22 @@ public class Video extends Thread {
 				hullMOP.add(mop);
 			}
 		}
-		Point centerOfHand = new Point(x / j, y / j);
+		Point centerOfHand = new Point(x / bf, y / bf);
 		// Draw on origin
 		Imgproc.rectangle(origin, new Point(0, 0), new Point(250, 300), new Scalar(255, 255, 0), 3);
 		// for (int i = 0; i < contours.size(); i++) {
 		if (index > 0) {
 			Imgproc.drawContours(origin, contours, index, new Scalar(0, 0, 255), 3);
 			Imgproc.drawContours(origin, hullMOP, index, new Scalar(0, 255, 255), 3);
-	//		if (centerOfHand.x > 0 && centerOfHand.y > 0 && centerOfHand.x < 250 && centerOfHand.y < 300)
-	//			Imgproc.circle(origin, centerOfHand, 20, new Scalar(255, 255, 0), 3);
+			if (centerOfHand.x > 0 && centerOfHand.y > 0 && centerOfHand.x < 250 && centerOfHand.y < 300)
+				Imgproc.circle(origin, centerOfHand, 10, new Scalar(255, 255, 0), 3);
+			System.out.println("centerOfHand.x : " + centerOfHand.x);
+			System.out.println("centerOfHand.y : " + centerOfHand.y);
 			}
 		// }
 
 		System.out.println("index : " + index);
 
-		// if (frame == 50) {
-		// capture.imwrite(new String("03301242.jpg"), origin);
-		// log.writeLog(origin, "베니스");
-		// }
 		contours.clear();
 	}
 
