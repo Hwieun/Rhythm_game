@@ -78,8 +78,8 @@ public class Video extends Thread {
 		Rect ROI = new Rect(0, 0, 250, 300);
 
 		int threshold1 = 85;
-		Scalar skincolorLower = new Scalar(0, 0.1137*255, 0.1379*255);
-		Scalar skincolorUpper = new Scalar(50, 0.6588*255, 255);
+		Scalar skincolorLower = new Scalar(0, 0.1137 * 255, 0.1379 * 255);
+		Scalar skincolorUpper = new Scalar(50, 0.6588 * 255, 255);
 		Imgproc.resize(origin, origin, sz);
 		Core.flip(origin, origin, 1); // y축 기준으로 뒤집기
 		Imgproc.cvtColor(origin, hand, Imgproc.COLOR_BGR2HLS);
@@ -92,7 +92,13 @@ public class Video extends Thread {
 		Imgproc.dilate(hand, hand, verticalStructure);
 		imgROI = new Mat(hand, ROI);
 		Imgproc.findContours(imgROI, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
+		int bigsize = 0;
+		int index;
+		for (index = 0; index < contours.size(); index++)
+			if (bigsize < contours.get(index).rows())
+				bigsize = contours.get(index).rows();
+			else if (bigsize < contours.get(index).cols())
+				bigsize = contours.get(index).cols();
 		List<MatOfInt> hull = new ArrayList<MatOfInt>(contours.size());
 		for (int i = 0; i < contours.size(); i++) {
 			hull.add(new MatOfInt());
@@ -103,45 +109,42 @@ public class Video extends Thread {
 		int j = 0;
 		double x = 0;
 		double y = 0;
-		for (int i = 0; i < contours.size(); i++) {
-			Point[] points = new Point[hull.get(i).rows()];
+		if (index > 0) {
+			index--;
+			for (int i = 0; i < contours.size(); i++) {
+				Point[] points = new Point[hull.get(index).rows()];
 
-			// Loop over all points that need to be hulled in current contour
-			for (j = 0; j < hull.get(i).rows(); j++) {
-				int index = (int) hull.get(i).get(j, 0)[0];
-				points[j] = new Point(contours.get(i).get(index, 0)[0], contours.get(i).get(index, 0)[1]);
-				x = x + contours.get(i).get(index, 0)[0];
-				y = y + contours.get(i).get(index, 0)[1];
+				// Loop over all points that need to be hulled in current
+				// contour
+				for (j = 0; j < hull.get(index).rows(); j++) {
+					int in = (int) hull.get(index).get(j, 0)[0];
+					points[j] = new Point(contours.get(index).get(in, 0)[0], contours.get(index).get(in, 0)[1]);
+					x = x + contours.get(index).get(in, 0)[0];
+					y = y + contours.get(index).get(in, 0)[1];
+				}
+				hullPoints.add(points);
 			}
-			hullPoints.add(points);
-		}
-		int bf = contours.size() * (--j);
+			j = j - 1;
 
-		Point centerOfHand = new Point(x / bf, y / bf);
-		// Convert Point arrays into MatOfPoint
-		for (int i = 0; i < hullPoints.size(); i++) {
-			MatOfPoint mop = new MatOfPoint();
-			mop.fromArray(hullPoints.get(i));
-			hullMOP.add(mop);
+			// Convert Point arrays into MatOfPoint
+			for (int i = 0; i < hullPoints.size(); i++) {
+				MatOfPoint mop = new MatOfPoint();
+				mop.fromArray(hullPoints.get(i));
+				hullMOP.add(mop);
+			}
 		}
-		int bigsize = 0;
-		int index;
-		for (index = 0; index < contours.size(); index++)
-			if (bigsize < contours.get(index).rows())
-				bigsize = contours.get(index).rows();
-			else if (bigsize < contours.get(index).cols())
-				bigsize = contours.get(index).cols();
-
+		Point centerOfHand = new Point(x / j, y / j);
 		// Draw on origin
 		Imgproc.rectangle(origin, new Point(0, 0), new Point(250, 300), new Scalar(255, 255, 0), 3);
-//		for (int i = 0; i < contours.size(); i++) {
-			if (index != 0) {
-				Imgproc.drawContours(origin, contours, --index, new Scalar(0, 0, 255), 3);
-				Imgproc.drawContours(origin, hullMOP, index, new Scalar(0, 255, 255), 3);
+		// for (int i = 0; i < contours.size(); i++) {
+		if (index > 0) {
+			Imgproc.drawContours(origin, contours, index, new Scalar(0, 0, 255), 3);
+			Imgproc.drawContours(origin, hullMOP, index, new Scalar(0, 255, 255), 3);
+	//		if (centerOfHand.x > 0 && centerOfHand.y > 0 && centerOfHand.x < 250 && centerOfHand.y < 300)
+	//			Imgproc.circle(origin, centerOfHand, 20, new Scalar(255, 255, 0), 3);
 			}
-//		}
-		if (centerOfHand.x < 250 && centerOfHand.y < 300)
-			Imgproc.circle(origin, centerOfHand, 20, new Scalar(255, 255, 0), 3);
+		// }
+
 		System.out.println("index : " + index);
 
 		// if (frame == 50) {
