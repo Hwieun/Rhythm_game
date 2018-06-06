@@ -1,97 +1,47 @@
-#include "stdafx.h"
 #include "hand_refactoring.h"
 
-#define Detecting 1
-#define Tracking 2
-#define VIDEO1 "1_banpal_hanson_color.avi"
-#define VIDEO2 "2_banpal_hanson_click_tracking.avi"
-#define VIDEO3 "3_banpal_dooson_click_tracking_hide.avi"
-#define VIDEO4 "4_ginpal_dooson_color.avi"
-#define VIDEO5 "5_ginpal_dooson_click_tracking_hide.avi"
+Mat& Cap::ReadCam() {
+	cap.read(origin);
+	//assert(!origin.empty());
 
-void Video::ReadCam() {
-	while (camera.read(origin))
-	{
-		if (!isClicked) {
-
-			HandDetect();
-
-			if (contours.size() > 0)
-				Drawing(2, Detecting);
-		}
-		else {
-			HandTracking();
-
-		}
-
-		imshow("main", origin);
-		if (27 == waitKey(1)) Close();
+	if (!isClicked) {
+		HandDetect();
+		if (contours.size() > 0)
+			Drawing(2, Detecting);
 	}
+	else {
+		HandTracking();
+	}
+	//imshow("test", origin);
+	//if (27 == waitKey(1)) Close();
+	return origin;
 }
 
-void Video::HandDetect() {
+// hsv : 0,28,115 ~ 16,122,253
+//       0,59,33 ~ 50,173,255
+// ycbcr : 
+void Cap::HandDetect() {
+	double scale = 1.8;
+	qt_flag = false;
+	Mat hierarchy;
 	resize(origin, origin, sz);
 	flip(origin, origin, 1);
 	cvtColor(origin, hand, COLOR_RGB2YCrCb);
-
-#ifdef TRACK_BAR
-#ifdef YCbCr
-	tb[0][0] = getTrackbarPos("y_min", "YCbCr");
-	tb[0][1] = getTrackbarPos("y_max", "YCbCr");
-
-	tb[1][0] = getTrackbarPos("cb_min", "YCbCr");
-	tb[1][1] = getTrackbarPos("cb_max", "YCbCr");
-
-	tb[2][0] = getTrackbarPos("cr_min", "YCbCr");
-	tb[2][1] = getTrackbarPos("cr_max", "YCbCr");
-
-	inRange(cuda_cvtColor_ycrcb, Scalar(tb[0][0], tb[1][0], tb[2][0]), Scalar(tb[0][1], tb[1][1], tb[2][1]), cuda_inrange);
-	imshow("cuda_inrange_out_ycrcb", cuda_inrange);
-#endif
-#ifdef HSV
-	tb[0][0] = getTrackbarPos("h_min", "HSV");
-	tb[0][1] = getTrackbarPos("h_max", "HSV");
-
-	tb[1][0] = getTrackbarPos("s_min", "HSV");
-	tb[1][1] = getTrackbarPos("s_max", "HSV");
-
-	tb[2][0] = getTrackbarPos("v_min", "HSV");
-	tb[2][1] = getTrackbarPos("v_max", "HSV");
-
-	cuda_inRange(cuda_cvtColor_hsv, Scalar(tb[0][0], tb[1][0], tb[2][0]), Scalar(tb[0][1], tb[1][1], tb[2][1]), cuda_inrange);
-	imshow("cuda_inrange_out_hsv", cuda_inrange);
-#endif
-#else
-#ifdef YCbCr
-	inRange(hand, Scalar(30, 75, 130), Scalar(255, 133, 180), hand);
-	imshow("ycbcr", hand);
-#endif
-#ifdef HSV
-	cuda_inRange(cuda_cvtColor_hsv, Scalar(0, 28, 115), Scalar(16, 122, 253), cuda_inrange);
-	imshow("cuda_inrange_hsv", cuda_inrange);
-#endif
-#endif
-
+	inRange(hand, Scalar(0, 95, 135), Scalar(255, 125, 160), hand);
 
 	//#Q1.kernel size
 	//#Q2.morphology sequence
-	Mat verticalStructure = getStructuringElement(MORPH_ELLIPSE, Size(4, 4));
-	//imshow("before", hand);
+	Mat verticalStructure = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
 	erode(hand, hand, verticalStructure);
-	verticalStructure = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
 	erode(hand, hand, verticalStructure);
-	imshow("morphology", hand);
 
-	Mat center = Mat::zeros(Size(ROI[0].width, ROI[0].height), CV_8UC1);
-	Mat distChange = center.clone();
 	handROI = Mat(hand, ROI[0]);
 	originROI = Mat(origin, ROI[0]);
-	Mat hierarchy;
 	findContours(handROI, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE, Point(0, 0));
-	rectangle(origin, ROI[0], Scalar(255, 255, 0), 3); //draw ROI
-
+	rectangle(origin, ROI[0], Scalar(150, 150, 0), 3); //draw ROI
+													   //		imshow("ROI", handROI);
 	int bigsize = 0;
-	//calculate biggest contour
+
 	if (contours.size() > 0) {
 		for (int i = 0; i < contours.size(); i++) {
 			double a = contourArea(contours[i], false);
@@ -100,25 +50,23 @@ void Video::HandDetect() {
 				largestIndex = i;
 			}
 		}
-		if (largestIndex >= 0) { //중심점, 손가락
-			int j = 0;
-			Mat cImg;
-			//if (!flag) 
-			cImg = Mat(Size(handROI.rows, handROI.cols), CV_8UC1, Scalar(0));
-			//else 
-			//   cImg = Mat(Size(hand.rows, hand.cols), CV_8UC1, Scalar(0));
+		if (contours[largestIndex].size() < 20) contours.clear();
+
+		if (contours.size() != 0) { //중심점, 손가락
+			Mat center = Mat::zeros(Size(ROI[0].width, ROI[0].height), CV_8UC1);
+			Mat distChange = center.clone();
+			Mat cImg = center.clone();
 			drawContours(center, contours, largestIndex, Scalar(255), -1);
 			distanceTransform(center, distChange, CV_DIST_L2, 5);
 			int maxIdx[2];    //좌표 값을 얻어올 배열(행, 열 순으로 저장됨)
 			minMaxIdx(distChange, NULL, &radius, NULL, maxIdx, center);   //최소값은 사용 X
 			centerOfHand = Point(maxIdx[1], maxIdx[0]);
 
-			if (centerOfHand.x > 0 && centerOfHand.y > 0 && centerOfHand.x < 800 && centerOfHand.y < 720) {
+			if (centerOfHand.x > 0 && centerOfHand.y > 0 && centerOfHand.x < ROI[0].width && centerOfHand.y < ROI[0].height) {
 				str.clear();
 				str += "radius : ";
 				str += to_string(radius);
 				putText(origin, str, Point(10, 75), 0, 1, Scalar(0, 0, 255), 2);
-				scale = 1.8;
 				circle(cImg, centerOfHand, radius*scale, Scalar(255), 3);
 				cImg = cImg & center;
 				//imshow("cImg", cImg);
@@ -129,6 +77,8 @@ void Video::HandDetect() {
 					if (circleContour[i].size() > thre) fingercount++;
 				if (preFingerCount - fingercount >= 4) {
 					putText(origin, "click event!!", Point(10, 45), 0, 1, Scalar(0, 0, 255), 2);
+					printf("click event!!!!!\n");
+					qt_flag = true;
 					isClicked = true;
 				}
 				str = "finger count : ";
@@ -140,48 +90,19 @@ void Video::HandDetect() {
 	}
 }
 
-void Video::HandTracking() {
-	//HandDetect();
-	////bounding 코드 추가(측정값 드로우)
-	//if (){ // bounding에서 찾은 object가 없으면
-	//   notFoundCount++;
-	//   cout << "notFoundCount:" << notFoundCount << endl;
-	//   if (notFoundCount >= 100){
-	//      notFoundCount = 0;
-	//      foundHand = false;
-	//      isClicked = false;
-	//      ROI[0].x = 700, ROI[0].y = 120;
-	//      return;
-	//   }
-	//}
-	//if (!foundHand){
-	//   //2.D.초기화
-	//   foundHand = true;
-	//   kf.predict();
-	//}
-	//else{
-	//   kf.correct();
-	//   kf.predict();
-	//}
-
-	//Drawing();
+void Cap::HandTracking() {
+	// set dT
 	double ticks = 0;
-
 	ticks = (double)cv::getTickCount();
 	double dT = (ticks - precTick) / getTickFrequency(); //seconds
 	precTick = ticks;
+
+	// detecting hands
 	HandDetect();
 
-	//      vector<vector<Point>> hands;
-	vector<Rect> handsBox;
+	handsBox.clear();
 	if (contours.size() > 0) {
 		Rect hBox = boundingRect(contours[largestIndex]);
-
-		//float ratio = (float)hBox.width / (float)hBox.height;
-		//if (ratio > 1.0f)
-		//   ratio = 1.0f / ratio;
-
-		//         hands.push_back(contours[largestIndex]);
 		handsBox.push_back(hBox);
 
 		drawContours(originROI, contours, largestIndex, CV_RGB(0, 0, 255), 2);
@@ -195,14 +116,17 @@ void Video::HandTracking() {
 	}
 	// <<<<< Detection result Drawing
 
+	// 여기서 계속 에러가 남.
 	if (handsBox.size() == 0) {
 		notFoundCount++;
 		cout << "notFoundCount:" << notFoundCount << endl;
-		if (notFoundCount >= 100) {
+		if (notFoundCount >= 30) {
 			notFoundCount = 0;
 			foundHand = false;
 			isClicked = false;
 			ROI[0].x = 700, ROI[0].y = 120;
+			ROI[0].width = 500;
+			ROI[0].height = 500;
 			return;
 		}
 	}
@@ -210,6 +134,7 @@ void Video::HandTracking() {
 	else {
 		notFoundCount = 0;
 
+		//roi상대좌표에서 절대좌표로
 		measure.at<float>(0) = centerOfHand.x + ROI[0].x;
 		measure.at<float>(1) = centerOfHand.y + ROI[0].y;
 		measure.at<float>(2) = (float)handsBox[0].width * 1.5;
@@ -238,16 +163,20 @@ void Video::HandTracking() {
 
 		foundHand = true;
 
-		//         state = kf.predict();
+		//state = kf.predict();
 	}
 	else {
 		if (notFoundCount == 0) {
 			cout << "State Measure:" << endl << measure << endl;
 			kf.correct(measure);
+			kf.transitionMatrix.at<float>(2) = dT;
+			kf.transitionMatrix.at<float>(9) = dT;
+			printf("dT :%lf\n", dT);
 		}
-		kf.transitionMatrix.at<float>(2) = dT;
-		kf.transitionMatrix.at<float>(9) = dT;
-		printf("dT :%lf\n", dT);
+		else {
+			kf.transitionMatrix.at<float>(2) = 0;
+			kf.transitionMatrix.at<float>(9) = 0;
+		}
 		state = kf.predict();
 		cout << "State post:" << endl << state << endl;
 	}
@@ -265,97 +194,42 @@ void Video::HandTracking() {
 	ROI[0].y = state.at<float>(1) - ROI[0].height / 2;
 	if (ROI[0].y < 0) ROI[0].y = 0;
 	else if (ROI[0].y + ROI[0].height > sz.height) ROI[0].height = sz.height - ROI[0].y;
-	else if (ROI[0].x > sz.width || ROI[0].width < 0) {
+	else if (ROI[0].y > sz.height || ROI[0].height < 0) {
 		ROI[0].y = 120; ROI[0].height = 500;
 	}
-	//if (ROI[0].x < 0) ROI[0].x = 0;
-	//else if (ROI[0].x + ROI[0].width > sz.width) ROI[0].width = (sz.width - state.at<float>(0)) * 2;
-	//if (state.at<float>(1) - ROI[0].height / 2 < 0) ROI[0].y = 0;
-	//else if (state.at<float>(1) + ROI[0].height / 2 > sz.height) ROI[0].height = (sz.height - state.at<float>(1)) * 2;
 	//>>>>>ROI 재설정
 
 	/*Drawing(3);*/ ///predict 결과값 그리기
-	drawContours(originROI, contours, largestIndex, CV_RGB(0, 255, 0), 2);
-	rectangle(originROI, handsBox[0], CV_RGB(0, 255, 255), 2);
-	circle(originROI, centerOfHand, 2, CV_RGB(0, 255, 255), -1);
+	draw_center = Point(state.at<float>(0), state.at<float>(1));
+	Drawing(3, Tracking);
 }
 
-void Video::Drawing(int level, int flag) {
+void Cap::Drawing(int level, int flag) {
 	// contours centerOfHand radius circleContour
 	//contour만
-	if (level >= 1) {
+	if (level == 1) {
 		drawContours(originROI, contours, largestIndex, Scalar(0, 0, 255), 3); //skin color contours
 	}
 	//원3개. 중심점,손바닥원,손가락원
-	if (level >= 2) {
-		circle(originROI, centerOfHand, 10, Scalar(255, 255, 0), 3); //중심점 파란색
+	else if (level == 2) {
+		drawContours(originROI, contours, largestIndex, Scalar(0, 0, 255), 3); //skin color contours
+		circle(originROI, centerOfHand, 2, Scalar(255, 255, 0), 3); //중심점 파란색
 		circle(originROI, centerOfHand, radius, Scalar(0, 0, 255), 3); //손바닥 빨간색
 		circle(originROI, centerOfHand, radius * scale, Scalar(255, 0, 255), 3); //손가락 기준되는 원 보라색
 
 	}
 	//boxing(measure)
-	if (level >= 3) {
-
+	else if (level == 3) {
+		circle(originROI, draw_center, 2, CV_RGB(0, 255, 255), -1);
 	}
 	return;
 }
 
-void Video::Close() {
+void Cap::Close() {
 	destroyAllWindows();
-	camera.release();
+	cap.release();
 }
 
-#ifdef TRACK_BAR
-void Video::MakeTrackBar() {
-
-}
-
-void Video::GetTrackBar() {
-#ifdef YCbCr
-	tb[0][0] = getTrackbarPos("y_min", "YCbCr");
-	tb[0][1] = getTrackbarPos("y_max", "YCbCr");
-
-	tb[1][0] = getTrackbarPos("cb_min", "YCbCr");
-	tb[1][1] = getTrackbarPos("cb_max", "YCbCr");
-
-	tb[2][0] = getTrackbarPos("cr_min", "YCbCr");
-	tb[2][1] = getTrackbarPos("cr_max", "YCbCr");
-
-	inRange(hand, Scalar(tb[0][0], tb[1][0], tb[2][0]), Scalar(tb[0][1], tb[1][1], tb[2][1]), hand);
-	imshow("ycbcr", origin);
-#endif
-#ifdef HSV
-	tb[0][0] = getTrackbarPos("h_min", "HSV");
-	tb[0][1] = getTrackbarPos("h_max", "HSV");
-
-	tb[1][0] = getTrackbarPos("s_min", "HSV");
-	tb[1][1] = getTrackbarPos("s_max", "HSV");
-
-	tb[2][0] = getTrackbarPos("v_min", "HSV");
-	tb[2][1] = getTrackbarPos("v_max", "HSV");
-
-	inRange(hand, Scalar(tb[0][0], tb[1][0], tb[2][0]), Scalar(tb[0][1], tb[1][1], tb[2][1]), hand);
-	imshow("inrange_out_hsv", origin);
-#endif
-}
-#endif
-
-
-
-
-#include "hand_refactoring.h"
-
-int main(int argc, char *argv[])
-{
-	Video video;
-	int thres = 95, num = 0;
-	namedWindow("main", CV_WINDOW_AUTOSIZE);
-	moveWindow("main", 0, 0);
-	video.ReadCam();
-	return 0;
-
-	//QApplication a(argc, argv);
-	//Rhythm_Game w;
-	//w.show();
-	//return a.exec();
+Point Cap::GetPoint() {
+	return 	draw_center;
 }
